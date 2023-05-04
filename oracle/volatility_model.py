@@ -3,12 +3,6 @@ import math
 from base_model import BaseModel
 
 class VolatilityModel(BaseModel):
-    #EMA Smoothing
-    def apply_smoothing(self, old_value, new_value, smoothing_factor):
-        delta = new_value - old_value
-        change = delta / smoothing_factor
-        return old_value + change
-
 
     def get_initial_state(self):
         return {
@@ -20,7 +14,6 @@ class VolatilityModel(BaseModel):
             'blockreward_smoothed': 1,
             'led_price': 1
         }
-    
     
     def initialize_state(self):
         BaseModel.initialize_state(self)
@@ -61,10 +54,10 @@ class VolatilityModel(BaseModel):
         return ({'new_btc_price': new_btc_price})
 
     def p_kdiff_smoothed(self, params, substep, state_history, previous_state):
-        new_kdiff_smoothed = self.apply_smoothing(previous_state['kdiff_smoothed'], previous_state['kdiff'], self.diff_smoothing_factor)
+        new_kdiff_smoothed = self.diff_smoothing_function.apply_smoothing(previous_state['kdiff'])
         return ({'new_kdiff_smoothed': new_kdiff_smoothed})
 
     def p_blockreward_smoothed(self, params, substep, state_history, previous_state):
         cur_blockreward = previous_state['btc_blockreward'] * previous_state['btc_price']
-        new_blockreward_smoothed = self.apply_smoothing(previous_state['blockreward_smoothed'], cur_blockreward, self.price_smoothing_factor)
+        new_blockreward_smoothed = self.price_smoothing_function.apply_smoothing(cur_blockreward)
         return ({'new_blockreward_smoothed': new_blockreward_smoothed})

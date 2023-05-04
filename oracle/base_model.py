@@ -4,14 +4,16 @@ import csv
 from cadCAD.configuration.utils import config_sim
 from cadCAD.configuration import Experiment
 from cadCAD.engine import ExecutionContext, Executor
-
+from smoothing_function import SmoothingFunction
 
 class BaseModel():
 
-    def __init__(self):
+    def __init__(self, price_smoothing_function: SmoothingFunction, diff_smoothing_function: SmoothingFunction):
         self.btc_blockreward_data = []
         self.btc_diff_data = []
         self.btc_price_data = []
+        self.price_smoothing_function = price_smoothing_function
+        self.diff_smoothing_function = diff_smoothing_function
 
     def initialize_state(self):
         # Populate historical data
@@ -63,10 +65,6 @@ class BaseModel():
                 }
             }
         ]
-
-    @abstractmethod
-    def apply_smoothing(self, old_value, new_value, smoothing_factor):
-        pass
     
     @abstractmethod
     def get_initial_state(self):
@@ -114,7 +112,7 @@ class BaseModel():
         return ('kdiff', policy_input['new_kdiff'])
 
     def p_kdiff_smoothed(self, params, substep, state_history, previous_state):
-        new_kdiff_smoothed = self.apply_smoothing(previous_state['kdiff_smoothed'], previous_state['kdiff'], self.diff_smoothing_factor)
+        new_kdiff_smoothed = self.diff_smoothing_function.apply_smoothing(previous_state['kdiff'])
         return ({'new_kdiff_smoothed': new_kdiff_smoothed})
 
     def s_kdiff_smoothed(self, params, substep, state_history, previous_state, policy_input):
@@ -122,7 +120,7 @@ class BaseModel():
 
     def p_blockreward_smoothed(self, params, substep, state_history, previous_state):
         cur_blockreward = previous_state['btc_blockreward'] * previous_state['btc_price']
-        new_blockreward_smoothed = self.apply_smoothing(previous_state['blockreward_smoothed'], cur_blockreward, self.price_smoothing_factor)
+        new_blockreward_smoothed = self.price_smoothing_function.apply_smoothing(cur_blockreward)
         return ({'new_blockreward_smoothed': new_blockreward_smoothed})
 
     def s_blockreward_smoothed(self, params, substep, state_history, previous_state, policy_input):
@@ -134,4 +132,3 @@ class BaseModel():
 
     def s_led_price(self, params, substep, state_history, previous_state, policy_input):
         return ('led_price', policy_input['new_led_price'])
-

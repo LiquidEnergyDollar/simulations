@@ -1,29 +1,29 @@
 import numpy as np
 import math
 from base_model import BaseModel
+from smoothing_function import SmoothingFunction
 
 class PriceSpikeModel(BaseModel):
 
-    def __init__(self, btc_price):
-        super().__init__()
+    def __init__(
+            self, 
+            price_smoothing_function: SmoothingFunction, 
+            diff_smoothing_function: SmoothingFunction,
+            btc_price
+        ):
+        super().__init__(price_smoothing_function, diff_smoothing_function)
         self.btc_price = btc_price
 
-    #EMA Smoothing
-    def apply_smoothing(self, old_value, new_value, smoothing_factor):
-        delta = new_value - old_value
-        change = delta / smoothing_factor
-        return old_value + change
-
-
-    def get_initial_state(self):
+    def get_initial_state(self, params):
+        diff_convergence = params['diff_convergence']
         return {
             'btc_diff': 1,
             'btc_price': self.btc_price,
             'btc_blockreward': 1,
             'kdiff': 1,
             'kdiff_smoothed': 1,
-            'blockreward_smoothed': 1,
-            'led_price': 1
+            'blockreward_smoothed': self.btc_price,
+            'led_price': self.btc_price / ((self.btc_price - 1) * params['diff_convergence'][0])
         }
     
     
@@ -50,15 +50,6 @@ class PriceSpikeModel(BaseModel):
     # Kdiff is ignored for this simulation
     def p_kdiff(self, params, substep, state_history, previous_state):
         return ({'new_kdiff': previous_state['btc_diff']})
-
-    def p_kdiff_smoothed(self, params, substep, state_history, previous_state):
-        new_kdiff_smoothed = self.apply_smoothing(previous_state['kdiff_smoothed'], previous_state['kdiff'], self.diff_smoothing_factor)
-        return ({'new_kdiff_smoothed': new_kdiff_smoothed})
-    
-    def p_blockreward_smoothed(self, params, substep, state_history, previous_state):
-        cur_blockreward = previous_state['btc_blockreward'] * previous_state['btc_price']
-        new_blockreward_smoothed = self.apply_smoothing(previous_state['blockreward_smoothed'], cur_blockreward, self.price_smoothing_factor)
-        return ({'new_blockreward_smoothed': new_blockreward_smoothed})
 
     # No scaling
     def p_led_price(self, params, substep, state_history, previous_state):

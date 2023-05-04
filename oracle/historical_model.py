@@ -1,12 +1,6 @@
 from base_model import BaseModel
 
 class HistoricalModel(BaseModel):
-    #EMA Smoothing
-    def apply_smoothing(self, old_value, new_value, smoothing_factor):
-        delta = new_value - old_value
-        change = delta / smoothing_factor
-        return old_value + change
-
 
     def get_initial_state(self):
         return {
